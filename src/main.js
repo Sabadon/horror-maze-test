@@ -8,6 +8,7 @@ import { regenerate } from './levels/level01.js'
 import { setupAtmosphere } from './core/atmosphereManager.js'
 import { audioManager } from './audio/audioManager.js'
 import { Monster } from './entities/monster.js'
+import { LaserGun } from './entities/laser.js'
 import { getState, setState, onChange } from './core/gameStateManager.js'
 import { createComposer } from './core/postProcessing.js'
 import './ui/styles.css'
@@ -70,6 +71,7 @@ playerObject.position.copy(getStartPosition())
 
 // --- Monster (after scene build so PSX snap patches it too) ---
 const monster = new Monster(scene)
+const laserGun = new LaserGun(scene, _levelMeshes ? [_levelMeshes.wallMesh] : [])
 
 // --- UI ---
 const canvas = document.getElementById('game')
@@ -92,6 +94,7 @@ function _restart() {
   playerObject.position.copy(getStartPosition())
   monster.rebuild()
   monster.reset()
+  laserGun._collidables = _levelMeshes ? [_levelMeshes.wallMesh] : []
   canvas.requestPointerLock()
 }
 
@@ -138,6 +141,7 @@ renderer.setAnimationLoop(() => {
     camera.getWorldDirection(_cameraFwd)
     updatePlayer(delta)
     monster.update(delta)
+    laserGun.update(delta)
     audioManager.update(playerObject.position, _cameraFwd)
     for (const f of _flickerers) f.update(delta, clock.elapsedTime)
     hud.update(delta)
