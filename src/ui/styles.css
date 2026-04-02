@@ -1,0 +1,85 @@
+#ui {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.screen {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: all;
+}
+.screen.visible { display: flex; }
+
+.screen h1 {
+  color: #fff;
+  font-family: monospace;
+  font-size: 3rem;
+  text-transform: uppercase;
+  letter-spacing: 8px;
+  margin-bottom: 48px;
+}
+
+.btn {
+  background: transparent;
+  border: 2px solid #fff;
+  color: #fff;
+  font-family: monospace;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  padding: 12px 32px;
+  cursor: pointer;
+  margin: 6px;
+  min-width: 200px;
+}
+.btn:hover { background: rgba(255, 255, 255, 0.12); }
+
+#vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 35%, #000 100%);
+}
+
+#crosshair {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  width: 1px;
+  height: 1px;
+}
+#crosshair::before,
+#crosshair::after {
+  content: '';
+  position: absolute;
+  background: rgba(255, 255, 255, 0.65);
+}
+#crosshair::before { width: 12px; height: 2px; top: -1px; left: -6px; }
+#crosshair::after  { width: 2px; height: 12px; top: -6px; left: -1px; }
+
+#paused-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: rgba(255, 255, 255, 0.6);
+  font-family: monospace;
+  font-size: 1.1rem;
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  pointer-events: none;
+  display: none;
+}
+
+@keyframes deathFlash {
+  0%   { background: rgba(160, 0, 0, 0); }
+  20%  { background: rgba(160, 0, 0, 0.75); }
+  100% { background: rgba(0, 0, 0, 0.88); }
+}
