@@ -360,3 +360,105 @@ export function makeCeilTexture() {
     }
   }, 7)
 }
+
+// ---------------------------------------------------------------------------
+// Room floor — slightly cleaner stone for dead-end rooms and open chambers
+// ---------------------------------------------------------------------------
+export function makeRoomFloorTexture() {
+  return makeTexture((ctx, rng) => {
+    const S = 64, SW = 32, SH = 32, SG = 2
+
+    // Dark base
+    ctx.fillStyle = '#181614'
+    ctx.fillRect(0, 0, S, S)
+
+    // Larger stone slabs
+    for (let row = 0; row < 2; row++) {
+      const y = row * (SH + SG) + 1
+      const off = (row % 2) * 16
+
+      for (let col = -1; col <= 2; col++) {
+        const x  = col * (SW + SG) - off
+        const v  = rng() * 14
+        const lum = Math.round(42 + v)
+        ctx.fillStyle = `rgb(${lum},${lum + 2},${lum - 1})`
+        ctx.fillRect(x, y, SW, SH)
+
+        // Subtle wet-sheen
+        ctx.fillStyle = 'rgba(100,130,140,0.08)'
+        ctx.fillRect(x + 4, y + 4, SW - 8, SH - 8)
+
+        // Edge shadows
+        ctx.fillStyle = 'rgba(0,0,0,0.32)'
+        ctx.fillRect(x,     y,     SW, 1)
+        ctx.fillRect(x,     y,     1,  SH)
+        ctx.fillRect(x,     y + SH - 1, SW, 1)
+      }
+    }
+
+    // Grout
+    ctx.fillStyle = 'rgba(6,8,4,0.8)'
+    for (let row = 0; row <= 2; row++) {
+      const gy = row * (SH + SG)
+      ctx.fillRect(0, gy, S, SG)
+    }
+
+    // Less algae, more dust/debris
+    for (let i = 0; i < 6; i++) {
+      const ax = rng() * S, ay = rng() * S
+      const ar = 1 + rng() * 3
+      const g  = Math.round(48 + rng() * 35)
+      ctx.fillStyle = `rgba(12,${g},8,${0.3 + rng() * 0.4})`
+      ctx.beginPath()
+      ctx.ellipse(ax, ay, ar, ar * 0.5, rng() * Math.PI, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  }, 77)
+}
+
+// ---------------------------------------------------------------------------
+// Room ceiling — slightly different from corridor ceiling for open rooms
+// ---------------------------------------------------------------------------
+export function makeRoomCeilTexture() {
+  return makeTexture((ctx, rng) => {
+    const S = 64
+
+    // Dark base
+    ctx.fillStyle = '#0e0c0a'
+    ctx.fillRect(0, 0, S, S)
+
+    // Stone patches
+    for (let i = 0; i < 12; i++) {
+      const px = rng() * S, py = rng() * S
+      const pw = 8 + rng() * 16, ph = 6 + rng() * 10
+      const v   = rng() * 12
+      const lum = Math.round(22 + v)
+      ctx.fillStyle = `rgb(${lum},${lum},${lum - 1})`
+      ctx.fillRect(px, py, pw, ph)
+    }
+
+    // Water stain rings
+    for (let i = 0; i < 4; i++) {
+      const cx = rng() * S, cy = rng() * S
+      const maxR = 4 + rng() * 10
+      for (let r = maxR; r > 1; r -= 2) {
+        const brown = Math.round(38 + rng() * 20)
+        ctx.strokeStyle = `rgba(${brown},${brown - 12},${brown - 18},${0.3 + rng() * 0.3})`
+        ctx.lineWidth = 1
+        ctx.beginPath()
+        ctx.ellipse(cx, cy, r, r * 0.6, rng() * 0.4, 0, Math.PI * 2)
+        ctx.stroke()
+      }
+    }
+
+    // Mold spots
+    for (let i = 0; i < 8; i++) {
+      const mx = rng() * S, my = rng() * S
+      const mr = 0.6 + rng() * 2.2
+      ctx.fillStyle = `rgba(3,3,2,${0.5 + rng() * 0.35})`
+      ctx.beginPath()
+      ctx.arc(mx, my, mr, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  }, 13)
+}

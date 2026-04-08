@@ -3,7 +3,7 @@ import { renderer } from './core/renderer.js'
 import { scene, clock } from './core/scene.js'
 import { camera, playerObject, cameraHolder } from './core/camera.js'
 import { updatePlayer, setCollisionFn } from './core/playerController.js'
-import { buildLevel, isWallAt, getStartPosition, getExitPosition } from './levels/levelBuilder.js'
+import { buildLevel, isWallAt, getStartPosition, getExitPositions } from './levels/levelBuilder.js'
 import { regenerate } from './levels/level01.js'
 import { setupAtmosphere } from './core/atmosphereManager.js'
 import { audioManager } from './audio/audioManager.js'
@@ -16,6 +16,8 @@ import { mainMenu } from './ui/mainMenu.js'
 import { hud } from './ui/hud.js'
 import { gameOverScreen } from './ui/gameOverScreen.js'
 import { escapedScreen } from './ui/escapedScreen.js'
+import { minimap } from './ui/minimap.js'
+import { invalidateCache } from './entities/pathfinder.js'
 
 // --- PSX vertex snapping ---
 function applyPSXSnap(scene) {
@@ -41,13 +43,13 @@ function applyPSXSnap(scene) {
 let _levelMeshes  = null
 let _atmResult    = null
 let _flickerers   = []
-let _exitPos      = null
+let _exitPositions = []
 
 function _buildScene() {
-  _levelMeshes = buildLevel(scene)
-  _atmResult   = setupAtmosphere()
-  _flickerers  = _atmResult.flickerers
-  _exitPos     = getExitPosition()
+  _levelMeshes   = buildLevel(scene)
+  _atmResult     = setupAtmosphere()
+  _flickerers    = _atmResult.flickerers
+  _exitPositions = getExitPositions()
   applyPSXSnap(scene)
 }
 
@@ -86,10 +88,13 @@ mainMenu.init(
   }
 )
 hud.init()
+minimap.init()
 
 function _restart() {
   _teardownScene()
   regenerate()
+  invalidateCache()
+  minimap.rebuildCache()
   _buildScene()
   playerObject.position.copy(getStartPosition())
   monster.rebuild()
@@ -133,11 +138,14 @@ onResize()
 
 // --- Game loop ---
 const _cameraFwd = new THREE.Vector3()
+const _playerPos = new THREE.Vector3()
+const EXIT_THRESHOLD_SQ = 2.25 // 1.5 * 1.5
 
 renderer.setAnimationLoop(() => {
   const delta = clock.getDelta()
+  const state = getState()
 
-  if (getState() === 'PLAYING') {
+    if (state === 'PLAYING') {
     camera.getWorldDirection(_cameraFwd)
     updatePlayer(delta)
     monster.update(delta)
@@ -145,9 +153,21 @@ renderer.setAnimationLoop(() => {
     audioManager.update(playerObject.position, _cameraFwd)
     for (const f of _flickerers) f.update(delta, clock.elapsedTime)
     hud.update(delta)
-    if (playerObject.position.distanceTo(_exitPos) < 1.5) setState('ESCAPED')
+    grainPass.uniforms.uTime.value += delta
+
+    // Exit check using squared distance (avoids sqrt)
+    _playerPos.copy(playerObject.position)
+    for (const pos of _exitPositions) {
+      const dx = _playerPos.x - pos.x
+      const dz = _playerPos.z - pos.z
+      if (dx * dx + dz * dz < EXIT_THRESHOLD_SQ) {
+        setState('ESCAPED')
+        break
+      }
+    }
+
+    minimap.update(monster._position.x, monster._position.z)
   }
 
-  if (getState() === 'PLAYING') grainPass.uniforms.uTime.value += delta
   composer.render()
 })

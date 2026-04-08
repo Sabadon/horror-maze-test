@@ -3,11 +3,14 @@ import { camera, playerObject } from '../core/camera.js'
 import { isPointerLocked } from '../core/input.js'
 import { getState } from '../core/gameStateManager.js'
 
-// ---- Audio ----
+const _gunRight = new THREE.Vector3()
+const _gunUp = new THREE.Vector3()
+const _upVec = new THREE.Vector3(0, 1, 0)
+const _raycaster = new THREE.Raycaster()
+
 function _playLaserFire(ctx, master) {
   const now = ctx.currentTime
 
-  // Energy charge whip: quick high sweep
   const sweep = ctx.createOscillator()
   sweep.type = 'sawtooth'
   sweep.frequency.setValueAtTime(200, now)
@@ -21,7 +24,6 @@ function _playLaserFire(ctx, master) {
   sweep.connect(sweepDist); sweepDist.connect(sweepGain); sweepGain.connect(master)
   sweep.start(now); sweep.stop(now + 0.25)
 
-  // Snap of electricity
   const noise = ctx.createBufferSource()
   noise.buffer = _noiseBuffer(ctx, 0.12)
   const snapFilt = ctx.createBiquadFilter()
@@ -32,7 +34,6 @@ function _playLaserFire(ctx, master) {
   noise.connect(snapFilt); snapFilt.connect(snapGain); snapGain.connect(master)
   noise.start(now)
 
-  // Sub thump kick
   const thump = ctx.createOscillator()
   thump.type = 'sine'
   thump.frequency.setValueAtTime(180, now)
@@ -47,7 +48,6 @@ function _playLaserFire(ctx, master) {
 function _playExplosion(ctx, master) {
   const now = ctx.currentTime
 
-  // Big low boom
   const boom = ctx.createOscillator()
   boom.type = 'sine'
   boom.frequency.setValueAtTime(90, now)
@@ -58,7 +58,6 @@ function _playExplosion(ctx, master) {
   boom.connect(boomGain); boomGain.connect(master)
   boom.start(now); boom.stop(now + 0.75)
 
-  // Rumble noise body
   const rumble = ctx.createBufferSource()
   rumble.buffer = _noiseBuffer(ctx, 0.9)
   const rumbleLp = ctx.createBiquadFilter()
@@ -69,7 +68,6 @@ function _playExplosion(ctx, master) {
   rumble.connect(rumbleLp); rumbleLp.connect(rumbleGain); rumbleGain.connect(master)
   rumble.start(now)
 
-  // Mid crack
   const crack = ctx.createBufferSource()
   crack.buffer = _noiseBuffer(ctx, 0.2)
   const crackBp = ctx.createBiquadFilter()
@@ -80,7 +78,6 @@ function _playExplosion(ctx, master) {
   crack.connect(crackBp); crackBp.connect(crackGain); crackGain.connect(master)
   crack.start(now)
 
-  // High sizzle tail
   const sizzle = ctx.createBufferSource()
   sizzle.buffer = _noiseBuffer(ctx, 1.2)
   const sizzleHp = ctx.createBiquadFilter()
@@ -95,7 +92,7 @@ function _playExplosion(ctx, master) {
 function _noiseBuffer(ctx, seconds) {
   const len = Math.floor(ctx.sampleRate * seconds)
   const buf = ctx.createBuffer(1, len, ctx.sampleRate)
-  const d   = buf.getChannelData(0)
+  const d = buf.getChannelData(0)
   for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1
   return buf
 }
@@ -109,18 +106,17 @@ function _distCurve(amount) {
   return curve
 }
 
-// ---- Explosion particles ----
 class Explosion {
   constructor(scene, pos) {
-    this._scene    = scene
-    this._elapsed  = 0
-    this._life     = 0.55
+    this._scene = scene
+    this._elapsed = 0
+    this._life = 0.55
     this._particles = []
 
     const count = 18
     for (let i = 0; i < count; i++) {
       const speed = 4 + Math.random() * 10
-      const vel   = new THREE.Vector3(
+      const vel = new THREE.Vector3(
         (Math.random() - 0.5) * 2,
         (Math.random() - 0.5) * 2,
         (Math.random() - 0.5) * 2
@@ -142,7 +138,6 @@ class Explosion {
       this._particles.push({ mesh, vel })
     }
 
-    // Flash sphere
     this._flash = new THREE.Mesh(
       new THREE.SphereGeometry(0.5, 8, 6),
       new THREE.MeshBasicMaterial({
@@ -156,7 +151,7 @@ class Explosion {
 
   update(delta) {
     this._elapsed += delta
-    const t    = this._elapsed / this._life
+    const t = this._elapsed / this._life
     const fade = 1 - t
 
     this._flash.material.opacity = Math.max(0, 1 - t * 6)
@@ -164,7 +159,7 @@ class Explosion {
 
     for (const { mesh, vel } of this._particles) {
       mesh.position.addScaledVector(vel, delta)
-      vel.multiplyScalar(0.88) // drag
+      vel.multiplyScalar(0.88)
       mesh.material.opacity = fade
     }
 
@@ -183,7 +178,6 @@ class Explosion {
   }
 }
 
-// ---- Beam ----
 const _up = new THREE.Vector3(0, 1, 0)
 
 function _beamQuat(dir) {
@@ -198,11 +192,9 @@ function _beamQuat(dir) {
 
 class Beam {
   constructor(scene, origin, dir, hitPoint) {
-    const length = hitPoint
-      ? origin.distanceTo(hitPoint)
-      : 40
+    const length = hitPoint ? origin.distanceTo(hitPoint) : 40
     const mid = origin.clone().addScaledVector(dir, length / 2)
-    const q   = _beamQuat(dir)
+    const q = _beamQuat(dir)
 
     function makeCyl(rTop, rBot, len, segs, color, opacity) {
       const mesh = new THREE.Mesh(
@@ -218,9 +210,9 @@ class Beam {
       return mesh
     }
 
-    this._core  = makeCyl(0.015, 0.015, length, 5, 0xeeffff, 1.0)
-    this._mid   = makeCyl(0.07,  0.07,  length, 6, 0x00ffff, 0.35)
-    this._outer = makeCyl(0.30,  0.30,  length, 6, 0x0044ff, 0.12)
+    this._core = makeCyl(0.015, 0.015, length, 5, 0xeeffff, 1.0)
+    this._mid = makeCyl(0.07, 0.07, length, 6, 0x00ffff, 0.35)
+    this._outer = makeCyl(0.30, 0.30, length, 6, 0x0044ff, 0.12)
 
     this._flash = new THREE.Mesh(
       new THREE.SphereGeometry(0.06, 6, 4),
@@ -230,16 +222,16 @@ class Beam {
     this._flash.renderOrder = 1001
 
     scene.add(this._core, this._mid, this._outer, this._flash)
-    this._scene   = scene
-    this._life    = 0.12
+    this._scene = scene
+    this._life = 0.12
     this._elapsed = 0
   }
 
   update(delta) {
     this._elapsed += delta
     const fade = 1 - Math.min(this._elapsed / this._life, 1)
-    this._core.material.opacity  = fade
-    this._mid.material.opacity   = 0.35 * fade
+    this._core.material.opacity = fade
+    this._mid.material.opacity = 0.35 * fade
     this._outer.material.opacity = 0.12 * fade
     this._flash.material.opacity = Math.max(0, 1 - this._elapsed / (this._life * 0.3))
     return this._elapsed >= this._life
@@ -253,36 +245,25 @@ class Beam {
   }
 }
 
-// ---- Raycaster ----
-const _raycaster = new THREE.Raycaster()
-const _rayOrigin = new THREE.Vector3()
-const _rayDir    = new THREE.Vector3()
-
-// ---- Gun offset (lower-right, gun barrel feel) ----
-const _right = new THREE.Vector3()
-const _camUp = new THREE.Vector3()
-
 function _gunOrigin(camPos, camDir) {
-  // Right vector from camera
-  _right.crossVectors(camDir, new THREE.Vector3(0, 1, 0)).normalize()
-  _camUp.crossVectors(_right, camDir).normalize()
+  _gunRight.crossVectors(camDir, _upVec).normalize()
+  _gunUp.crossVectors(_gunRight, camDir).normalize()
 
   return camPos.clone()
-    .addScaledVector(_right,  0.28)   // shift right
-    .addScaledVector(_camUp, -0.22)   // shift down
-    .addScaledVector(camDir,  0.5)    // push forward
+    .addScaledVector(_gunRight, 0.28)
+    .addScaledVector(_gunUp, -0.22)
+    .addScaledVector(camDir, 0.5)
 }
 
-// ---- LaserGun ----
 export class LaserGun {
   constructor(scene, collidables) {
-    this._scene      = scene
-    this._collidables = collidables  // array of THREE.Mesh for raycast
-    this._beams      = []
+    this._scene = scene
+    this._collidables = collidables
+    this._beams = []
     this._explosions = []
-    this._cooldown   = 0
-    this._audioCtx   = null
-    this._master     = null
+    this._cooldown = 0
+    this._audioCtx = null
+    this._master = null
 
     document.addEventListener('mousedown', e => {
       if (e.button !== 0) return
@@ -293,13 +274,12 @@ export class LaserGun {
 
   _ensureAudio() {
     if (this._audioCtx) return
-    // Piggyback on existing AudioContext if possible
     try {
       this._audioCtx = new (window.AudioContext || window.webkitAudioContext)()
       this._master = this._audioCtx.createGain()
       this._master.gain.value = 1.0
       this._master.connect(this._audioCtx.destination)
-    } catch(e) {}
+    } catch (e) {}
   }
 
   _fire() {
@@ -314,7 +294,6 @@ export class LaserGun {
 
     const origin = _gunOrigin(camPos, camDir)
 
-    // Raycast from screen center for accuracy, but beam renders from gun
     _raycaster.set(camPos, camDir)
     _raycaster.far = 40
     let hitPoint = null

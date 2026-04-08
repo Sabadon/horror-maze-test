@@ -35,14 +35,16 @@ const GrainShader = {
 
 export function createComposer(renderer, scene, camera) {
   const composer = new EffectComposer(renderer)
+  composer.setPixelRatio(1)
+  composer.setSize(320, 240)
 
   composer.addPass(new RenderPass(scene, camera))
 
   const bloom = new UnrealBloomPass(
-    new THREE.Vector2(320, 240),
-    0.2,  // strength
-    0.4,  // radius
-    0.9   // threshold
+    new THREE.Vector2(160, 120),
+    0.2,
+    0.4,
+    0.9
   )
   composer.addPass(bloom)
 

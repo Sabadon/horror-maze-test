@@ -69,20 +69,21 @@ Player can walk through an empty scene in first-person at 60 fps.
 ---
 
 ## Phase 3 — Maze Level Geometry
-Fixed test maze; random generation deferred to later.
+Procedural maze generation with special rooms.
 
 **Maze data format** (`src/levels/level01.js`):
-- 2D array of cell objects: `{ n, s, e, w }` booleans (true = wall present)
-- Cell size: 3 units × 3 units, wall height: 3 units
-- Player starts at cell (1,1), exit at opposite corner
+- 15×15 cells → 31×31 binary grid, CELL_SIZE = 2 units
+- Exports: `grid`, `START_CELL`, `exits[]`, `deadEndRooms[]`, `openRooms[]`
+- Player starts at center, exits distributed at varying distances
 
-**Todos:**
-- [x] `src/levels/level01.js` — hardcoded 11×11 maze grid, start (1,1) + exit (9,9)
-- [x] `src/levels/levelBuilder.js` — wall quads per cell edge, merged geometry, exports `isWallAt` + `getStartPosition`
+**Features:**
+- [x] `src/levels/mazeGenerator.js` — recursive backtracker DFS with braiding, dead-end rooms, open rooms
+- [x] `src/levels/level01.js` — exports all maze data, `regenerate()` for new mazes
+- [x] `src/levels/levelBuilder.js` — wall/floor/ceiling geometry + room geometry + exit markers
 - [x] AABB collision in `playerController.js` — per-axis check with player radius 0.35
 - [x] PSX resolution: renderer fixed at 320×240, `image-rendering: pixelated`, `antialias: false`
-- [x] Procedural 64×64 textures in `src/core/textureGenerator.js` — seeded RNG, `NearestFilter`, `RepeatWrapping`; sewer aesthetic (moss, water stains, slime drips, mold, cracks)
-- [x] Visible exit marker (emissive green pillar at exit cell)
+- [x] Procedural 64×64 textures in `src/core/textureGenerator.js` — wall, floor, ceiling, room variants
+- [x] Multiple exit markers with unique glow colors
 
 *Can develop Phase 5 (audio) in parallel once Phase 2 is stable.*
 
@@ -116,13 +117,18 @@ Dark, oppressive, PSX-era feel — no real-time shadows (too expensive and not P
 ---
 
 ## Phase 6 — Enemy / Monster [DONE]
-Psychological horror — glimpsed, never hunted.
+Active pursuit AI with patrol and chase behaviors.
 
-- [x] `src/entities/monster.js` — B&W billboard sprite, procedural scary face texture
-- [x] Corner peek: appears in peripheral vision (15–80°) when player turns, vanishes when looked at directly
-- [x] T-junction dash: sprints across corridor intersections in 0.35 s when player approaches
-- [x] DDA grid line-of-sight check for both behaviors
-- [x] Audio: non-positional ragged breathing (inhale + exhale + moan undertone) on every appearance
+- [x] `src/entities/monster.js` — Full AI state machine with PATROL/ALERT/CHASE/SEARCH/LOST states
+- [x] `src/entities/pathfinder.js` — A* pathfinding with MinHeap for efficient navigation
+- [x] **Patrol** — Wanders maze randomly using pathfinding, slow movement
+- [x] **Alert** — First sees player → pause, play alert sound, then chase
+- [x] **Chase** — Pursues player via A*, faster movement, periodic chase sounds
+- [x] **Search** — Lost sight → go to last known position, search area
+- [x] **Lost** — Give up after 10s → return to patrol
+- [x] Vision cone: 90° FOV, 10 cells range, LOS check
+- [x] Sprite size: 2.0 × 5.5 (taller, more imposing)
+- [x] Audio: alert growl, chase breathing, monster footsteps
 
 ---
 
@@ -146,9 +152,17 @@ Complete play-through from menu to death.
 - [x] `src/core/postProcessing.js` — EffectComposer + UnrealBloomPass (threshold 0.9, strength 0.2) + custom grain pass
 - [x] Dark vignette overlay via CSS radial-gradient
 
+### Fun Maze Generation [DONE]
+- [x] **Large maze** — 15×15 cells = 31×31 binary grid, CELL_SIZE = 2 (58×58 unit playable area)
+- [x] **Multiple exits** — 2-3 exits at varying distances from start, each with unique glow color (green/cyan/gold)
+- [x] **Dead-end rooms** — ~30% of dead-ends converted to 2×2 chambers with walls on 3 sides
+- [x] **Open rooms** — 6 scattered 3×3 clearings with dim amber point lights
+- [x] **More loops** — 60% braiding for interesting navigation paths
+- [x] **Unique room textures** — separate floor/ceiling textures for special areas
+- [x] **Multiple exit detection** — win when reaching any exit
+
 ### Skipped (by choice)
 - GitHub Pages deployment — not needed
-- Random maze generation — deferred
 
 ---
 

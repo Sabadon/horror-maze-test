@@ -22,6 +22,11 @@ class AudioManager {
     this._prevZ      = 0
     this._prevSet    = false
     this._distAccum  = 0
+
+    // Chase sound
+    this._chaseSound = null
+    this._chaseSource = null
+    this._chasePanner = null
   }
 
   // -------------------------------------------------------------------------
@@ -236,6 +241,178 @@ class AudioManager {
 
     src.connect(filt); filt.connect(gain)
     gain.connect(panner); panner.connect(this._master)
+    src.start(now)
+  }
+
+  playMonsterAlert(x, z) {
+    if (!this._ready) return
+
+    const panner = this._ctx.createPanner()
+    panner.panningModel = 'HRTF'
+    panner.distanceModel = 'inverse'
+    panner.refDistance = 2
+    panner.maxDistance = 60
+    panner.rolloffFactor = 1.2
+    if (panner.positionX !== undefined) {
+      panner.positionX.value = x
+      panner.positionY.value = 0
+      panner.positionZ.value = z
+    } else {
+      panner.setPosition(x, 0, z)
+    }
+
+    const sound = new Audio('/assets/sounds/monster-found.wav')
+    sound.volume = 1.0
+    const source = this._ctx.createMediaElementSource(sound)
+    source.connect(panner)
+    panner.connect(this._master)
+    sound.play()
+  }
+
+  startMonsterChase(x, z) {
+    if (!this._ready) return
+    this.stopMonsterChase()
+
+    this._chasePanner = this._ctx.createPanner()
+    this._chasePanner.panningModel = 'HRTF'
+    this._chasePanner.distanceModel = 'inverse'
+    this._chasePanner.refDistance = 2
+    this._chasePanner.maxDistance = 60
+    this._chasePanner.rolloffFactor = 1.2
+    if (this._chasePanner.positionX !== undefined) {
+      this._chasePanner.positionX.value = x
+      this._chasePanner.positionY.value = 0
+      this._chasePanner.positionZ.value = z
+    } else {
+      this._chasePanner.setPosition(x, 0, z)
+    }
+
+    this._chaseSound = new Audio('/assets/sounds/chase.wav')
+    this._chaseSound.volume = 1.0
+    this._chaseSound.loop = true
+    this._chaseSource = this._ctx.createMediaElementSource(this._chaseSound)
+    this._chaseSource.connect(this._chasePanner)
+    this._chasePanner.connect(this._master)
+    this._chaseSound.play()
+  }
+
+  updateChasePosition(x, z) {
+    if (!this._chasePanner) return
+    if (this._chasePanner.positionX !== undefined) {
+      this._chasePanner.positionX.value = x
+      this._chasePanner.positionZ.value = z
+    } else {
+      this._chasePanner.setPosition(x, 0, z)
+    }
+  }
+
+  stopMonsterChase() {
+    if (this._chaseSound) {
+      this._chaseSound.pause()
+      this._chaseSound.currentTime = 0
+      if (this._chaseSource) {
+        this._chaseSource.disconnect()
+        this._chaseSource = null
+      }
+      if (this._chasePanner) {
+        this._chasePanner.disconnect()
+        this._chasePanner = null
+      }
+      this._chaseSound = null
+    }
+  }
+
+  playMonsterChase(x, z) {
+    if (!this._ready) return
+    const ctx = this._ctx, now = ctx.currentTime
+    const dur = 1.5 + Math.random() * 1.0
+
+    const panner = ctx.createPanner()
+    panner.panningModel = 'HRTF'
+    panner.distanceModel = 'inverse'
+    panner.refDistance = 2
+    panner.maxDistance = 60
+    panner.rolloffFactor = 1.2
+    if (panner.positionX !== undefined) {
+      panner.positionX.value = x
+      panner.positionY.value = 0
+      panner.positionZ.value = z
+    } else {
+      panner.setPosition(x, 0, z)
+    }
+
+    // Heavy breathing sound
+    const breathe = ctx.createBufferSource()
+    breathe.buffer = this._brownNoiseBuffer(dur + 0.5)
+    breathe.loop = true
+
+    const breatheFilt = ctx.createBiquadFilter()
+    breatheFilt.type = 'bandpass'
+    breatheFilt.frequency.value = 300
+    breatheFilt.Q.value = 4
+
+    const breatheGain = ctx.createGain()
+    breatheGain.gain.setValueAtTime(0, now)
+    breatheGain.gain.linearRampToValueAtTime(0.45, now + 0.3)
+    breatheGain.gain.setValueAtTime(0.45, now + dur * 0.7)
+    breatheGain.gain.exponentialRampToValueAtTime(0.0001, now + dur)
+
+    // LFO for breath rhythm
+    const lfo = ctx.createOscillator()
+    lfo.frequency.value = 3
+    const lfoGain = ctx.createGain()
+    lfoGain.gain.value = 0.15
+    lfo.connect(lfoGain)
+    lfoGain.connect(breatheGain.gain)
+
+    breathe.connect(breatheFilt); breatheFilt.connect(breatheGain); breatheGain.connect(panner)
+    breathe.start(now)
+    lfo.start(now)
+    breathe.stop(now + dur + 0.1)
+    lfo.stop(now + dur + 0.1)
+
+    panner.connect(this._master)
+  }
+
+  playMonsterStep(x, z) {
+    if (!this._ready) return
+    const ctx = this._ctx, now = ctx.currentTime
+
+    const dur = 0.12 + Math.random() * 0.06
+    const len = Math.floor(ctx.sampleRate * dur)
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate)
+    const data = buf.getChannelData(0)
+    const decay = ctx.sampleRate * 0.04
+
+    for (let i = 0; i < len; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / decay)
+    }
+
+    const src = ctx.createBufferSource()
+    src.buffer = buf
+
+    const filt = ctx.createBiquadFilter()
+    filt.type = 'lowpass'
+    filt.frequency.value = 180
+
+    const gain = ctx.createGain()
+    gain.gain.value = 0.5
+
+    const panner = ctx.createPanner()
+    panner.panningModel = 'HRTF'
+    panner.distanceModel = 'inverse'
+    panner.refDistance = 2
+    panner.maxDistance = 50
+    panner.rolloffFactor = 1.5
+    if (panner.positionX !== undefined) {
+      panner.positionX.value = x
+      panner.positionY.value = 0
+      panner.positionZ.value = z
+    } else {
+      panner.setPosition(x, 0, z)
+    }
+
+    src.connect(filt); filt.connect(gain); gain.connect(panner); panner.connect(this._master)
     src.start(now)
   }
 
