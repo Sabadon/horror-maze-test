@@ -9,6 +9,8 @@ First-person horror game built with Three.js + Vite. Hosted as static files on G
 - **Wall corner bleed-through** — at corridor corners where two displaced wall faces meet at 90°, protruding brick vertices from one face poke through the adjacent face. Fix: add a thin solid block (BoxGeometry) filling each interior corner, or clamp displacement near face edges, or cap `displacementScale` low enough that no vertex crosses the adjacent plane.
 - **Floor displacement missing** — floor slabs are flat geometry with no displacement map. Should receive the same height-map treatment as walls (slab faces raised, grout recessed). Needs subdivided `PlaneGeometry` + `makeFloorDisplacementMap()` derived from the slab height field.
 - **Ceiling displacement missing** — ceiling is flat. Should match the rough-stone height variation already encoded in `makeCeilTexture`, giving damp uneven stone overhead.
+- **Movement after death** — when the player dies (GAME_OVER state), movement and shooting still work. Player input should be frozen until restart.
+- **Momentum on pause** — if the player is walking when Escape is pressed (PAUSED state), movement continues until a key is released. Held keys should be cleared on pause.
 
 ---
 
