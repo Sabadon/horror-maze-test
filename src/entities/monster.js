@@ -6,6 +6,8 @@ import { getState, setState } from '../core/gameStateManager.js'
 import { hud } from '../ui/hud.js'
 import { findPath, getWalkableCells } from './pathfinder.js'
 
+const BASE_URL = import.meta.env.BASE_URL || '/'
+
 const VIEW_DISTANCE = 10
 const VIEW_ANGLE = 90
 const CHASE_SPEED = 5.0
@@ -69,7 +71,7 @@ function isValidPosition(x, z) {
 
 export class Monster {
   constructor(scene) {
-    const texture = new THREE.TextureLoader().load('/assets/textures/ebaka.png')
+    const texture = new THREE.TextureLoader().load(`${BASE_URL}assets/textures/ebaka.png`)
     texture.magFilter = THREE.NearestFilter
     texture.minFilter = THREE.NearestFilter
 

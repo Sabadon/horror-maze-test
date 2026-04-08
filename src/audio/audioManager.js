@@ -9,6 +9,7 @@
 // AudioContext is created on first user gesture (init()) to satisfy
 // browser autoplay policy.  Safe to call init() multiple times.
 
+const BASE_URL = import.meta.env.BASE_URL || '/'
 const FOOTSTEP_DIST = 0.65   // world units between stone footstep sounds
 
 class AudioManager {
@@ -261,7 +262,7 @@ class AudioManager {
       panner.setPosition(x, 0, z)
     }
 
-    const sound = new Audio('/assets/sounds/monster-found.wav')
+    const sound = new Audio(`${BASE_URL}assets/sounds/monster-found.wav`)
     sound.volume = 1.0
     const source = this._ctx.createMediaElementSource(sound)
     source.connect(panner)
@@ -287,7 +288,7 @@ class AudioManager {
       this._chasePanner.setPosition(x, 0, z)
     }
 
-    this._chaseSound = new Audio('/assets/sounds/chase.wav')
+    this._chaseSound = new Audio(`${BASE_URL}assets/sounds/chase.wav`)
     this._chaseSound.volume = 1.0
     this._chaseSound.loop = true
     this._chaseSource = this._ctx.createMediaElementSource(this._chaseSound)
